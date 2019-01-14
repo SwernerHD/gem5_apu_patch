@@ -1,0 +1,80 @@
+diff -ruN '--exclude=.git' '--exclude=build' '--exclude=m5out' '--exclude=*.pyc' '--exclude=parsetab.py' ../gem5_patched/configs/common/FileSystemConfig.py ../gem5/configs/common/FileSystemConfig.py
+--- ../gem5_patched/configs/common/FileSystemConfig.py	2018-12-22 00:55:25.102288456 +0000
++++ ../gem5/configs/common/FileSystemConfig.py	2019-01-09 19:33:23.305949922 +0000
+@@ -105,6 +105,9 @@
+     makedirs(mapsdir)
+     file_append((mapsdir, 'maps'), '')
+ 
++    # Set up /proc/self/status
++    file_append((mapsdir, 'status'), '')
++
+     # Set up /sys
+     sysdir = joinpath(fsdir, 'sys')
+     replace_tree(sysdir)
+diff -ruN '--exclude=.git' '--exclude=build' '--exclude=m5out' '--exclude=*.pyc' '--exclude=parsetab.py' ../gem5_patched/configs/example/apu_se.py ../gem5/configs/example/apu_se.py
+--- ../gem5_patched/configs/example/apu_se.py	2018-12-22 00:55:25.106288615 +0000
++++ ../gem5/configs/example/apu_se.py	2018-12-22 00:38:18.221688615 +0000
+@@ -455,11 +455,18 @@
+         env = [line.rstrip() for line in f]
+ else:
+     env = ['LD_LIBRARY_PATH=%s' % ':'.join([
+-               "/proj/radl_tools/rocm-1.6/lib",
+-               "/proj/radl_tools/rocm-1.6/hcc/lib64",
+-               "/tool/pandora64/.package/libunwind-1.1/lib",
+-               "/tool/pandora64/.package/gcc-6.4.0/lib64"
+-           ]),
++               "/opt/rocm/lib",
++               "/opt/rocm/hcc/lib",
++               "/opt/rocm/hip/lib",
++               "/opt/rocm/hsa/lib",
++               "/opt/rocm/libhsakmt/lib",
++               "/usr/lib/x86_64-linux-gnu",
++               "/opt/rocm/miopen/lib",
++               "/opt/rocm/miopengemm/lib",
++               "/opt/rocm/hipblas/lib",
++               "/opt/rocm/rocblas/lib" 
++	  ]),
++	   "HOME=/sim/",
+            "HSA_ENABLE_INTERRUPT=0"]
+ 
+ process = Process(executable = executable, cmd = [options.cmd]
+@@ -625,6 +632,9 @@
+ 
+ root = Root(system=system, full_system=False)
+ 
++for i in xrange(options.num_cpus):
++        FileSystemConfig.register_node([i] , "512MB")
++
+ hsaTopology.createHsaTopology(options)
+ 
+ m5.ticks.setGlobalFrequency('1THz')
+diff -ruN '--exclude=.git' '--exclude=build' '--exclude=m5out' '--exclude=*.pyc' '--exclude=parsetab.py' ../gem5_patched/src/arch/x86/linux/process.cc ../gem5/src/arch/x86/linux/process.cc
+--- ../gem5_patched/src/arch/x86/linux/process.cc	2018-12-22 00:55:25.378299364 +0000
++++ ../gem5/src/arch/x86/linux/process.cc	2018-12-21 20:55:21.000000000 +0000
+@@ -254,7 +254,7 @@
+     /*  24 */ SyscallDesc("sched_yield", ignoreFunc),
+     /*  25 */ SyscallDesc("mremap", mremapFunc<X86Linux64>),
+     /*  26 */ SyscallDesc("msync", unimplementedFunc),
+-    /*  27 */ SyscallDesc("mincore", unimplementedFunc),
++    /*  27 */ SyscallDesc("mincore", ignoreFunc),
+     /*  28 */ SyscallDesc("madvise", ignoreFunc),
+     /*  29 */ SyscallDesc("shmget", unimplementedFunc),
+     /*  30 */ SyscallDesc("shmat", unimplementedFunc),
+@@ -430,7 +430,7 @@
+     /* 200 */ SyscallDesc("tkill", unimplementedFunc),
+     /* 201 */ SyscallDesc("time", timeFunc<X86Linux64>),
+     /* 202 */ SyscallDesc("futex", futexFunc<X86Linux64>),
+-    /* 203 */ SyscallDesc("sched_setaffinity", unimplementedFunc),
++    /* 203 */ SyscallDesc("sched_setaffinity", ignoreFunc),
+     /* 204 */ SyscallDesc("sched_getaffinity", ignoreFunc),
+     /* 205 */ SyscallDesc("set_thread_area", unimplementedFunc),
+     /* 206 */ SyscallDesc("io_setup", unimplementedFunc),
+@@ -797,7 +797,7 @@
+     /* 238 */ SyscallDesc("tkill", unimplementedFunc),
+     /* 239 */ SyscallDesc("sendfile64", unimplementedFunc),
+     /* 240 */ SyscallDesc("futex", unimplementedFunc),
+-    /* 241 */ SyscallDesc("sched_setaffinity", unimplementedFunc),
++    /* 241 */ SyscallDesc("sched_setaffinity", ignoreFunc),
+     /* 242 */ SyscallDesc("sched_getaffinity", ignoreFunc),
+     /* 243 */ SyscallDesc("set_thread_area", setThreadArea32Func),
+     /* 244 */ SyscallDesc("get_thread_area", unimplementedFunc),
